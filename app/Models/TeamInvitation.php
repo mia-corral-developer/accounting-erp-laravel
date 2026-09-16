@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToCurrentTeam;
+use App\Traits\IsTenantModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Laravel\Jetstream\TeamInvitation as JetstreamTeamInvitation;
 
 class TeamInvitation extends JetstreamTeamInvitation
 {
-    use BelongsToCurrentTeam;
+    use IsTenantModel;
 
     /**
      * The attributes that are mass assignable.

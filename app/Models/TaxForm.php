@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToCurrentTeam;
+use App\Traits\IsTenantModel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 class TaxForm extends Model
 {
     use HasFactory;
-    use BelongsToCurrentTeam;
+    use IsTenantModel;
 
     #[\Override]
     protected $primaryKey = 'tax_form_id';

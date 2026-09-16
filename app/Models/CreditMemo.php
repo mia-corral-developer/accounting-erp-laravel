@@ -6,7 +6,7 @@ namespace App\Models;
 
 use App\Concerns\HasDocuments;
 use App\Contracts\Documentable;
-use App\Models\Concerns\BelongsToCurrentTeam;
+use App\Traits\IsTenantModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,7 +24,7 @@ class CreditMemo extends Model implements Documentable
 {
     use HasDocuments;
     use HasFactory, SoftDeletes;
-    use BelongsToCurrentTeam;
+    use IsTenantModel;
 
     #[\Override]
     protected $primaryKey = 'credit_memo_id';

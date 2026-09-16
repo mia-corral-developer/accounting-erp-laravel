@@ -6,7 +6,7 @@ namespace App\Models;
 
 use App\Observers\TransactionObserver;
 use App\Services\ExchangeRateService;
-use App\Models\Concerns\BelongsToCurrentTeam;
+use App\Traits\IsTenantModel;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
 class Transaction extends Model
 {
     use HasFactory;
-    use BelongsToCurrentTeam;
+    use IsTenantModel;
 
     #[\Override]
     protected $primaryKey = 'transaction_id';

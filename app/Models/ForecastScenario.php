@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToCurrentTeam;
+use App\Traits\IsTenantModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ForecastScenario extends Model
 {
     use HasFactory;
-    use BelongsToCurrentTeam;
+    use IsTenantModel;
 
     #[\Override]
     protected $fillable = ['name', 'team_id'];

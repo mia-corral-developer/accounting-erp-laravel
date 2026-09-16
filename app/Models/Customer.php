@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToCurrentTeam;
+use App\Traits\IsTenantModel;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,7 +23,7 @@ use Illuminate\Notifications\Notifiable;
 class Customer extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable;
-    use BelongsToCurrentTeam;
+    use IsTenantModel;
 
     // protected $primaryKey = 'customer_id';
     protected $guard = 'customer';
