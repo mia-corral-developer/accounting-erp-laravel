@@ -9,13 +9,21 @@ services:
         GROUP_ID: '${WWWGROUP:-1000}'
     image: accounting-erp-laravel:latest
     ports:
-      - '${APP_PORT:-8000}:80'
+      - '${APP_PORT:-8000}:8000'
     environment:
       CONTAINER_MODE: http
       OCTANE_SERVER: roadrunner
       WITH_SCHEDULER: 'true'
       WITH_HORIZON: 'false'
       RUNNING_MIGRATIONS_AND_SEEDERS: '${RUNNING_MIGRATIONS_AND_SEEDERS:-false}'
+      DB_CONNECTION: 'mysql'
+      DB_HOST: mysql
+      DB_PORT: '3306'
+      DB_DATABASE: '${DB_DATABASE:-liberu}'
+      DB_USERNAME: '${DB_USERNAME:-liberu}'
+      DB_PASSWORD: '${DB_PASSWORD:-secret}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
     env_file:
       - .env
     volumes:
@@ -38,6 +46,14 @@ services:
     image: accounting-erp-laravel:latest
     environment:
       CONTAINER_MODE: reverb
+      DB_CONNECTION: 'mysql'
+      DB_HOST: mysql
+      DB_PORT: '3306'
+      DB_DATABASE: '${DB_DATABASE:-liberu}'
+      DB_USERNAME: '${DB_USERNAME:-liberu}'
+      DB_PASSWORD: '${DB_PASSWORD:-secret}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
     env_file:
       - .env
     volumes:
@@ -63,6 +79,14 @@ services:
     environment:
       CONTAINER_MODE: worker
       WORKER_COMMAND: 'php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600'
+      DB_CONNECTION: 'mysql'
+      DB_HOST: mysql
+      DB_PORT: '3306'
+      DB_DATABASE: '${DB_DATABASE:-liberu}'
+      DB_USERNAME: '${DB_USERNAME:-liberu}'
+      DB_PASSWORD: '${DB_PASSWORD:-secret}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
     env_file:
       - .env
     volumes:
