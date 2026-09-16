@@ -12,12 +12,12 @@ return new class() extends Migration
     {
         Schema::create('accounting_three_way_matches', function (Blueprint $table): void {
             $table->id();
-            $table->string('purchase_order_type', 160);
-            $table->string('purchase_order_id', 160);
-            $table->string('receipt_type', 160);
-            $table->string('receipt_id', 160);
-            $table->string('bill_type', 160);
-            $table->string('bill_id', 160);
+            $table->string('purchase_order_type', 64);
+            $table->string('purchase_order_id', 64);
+            $table->string('receipt_type', 64);
+            $table->string('receipt_id', 64);
+            $table->string('bill_type', 64);
+            $table->string('bill_id', 64);
             $table->char('currency', 3);
             $table->decimal('ordered_quantity', 20, 4);
             $table->decimal('received_quantity', 20, 4);
