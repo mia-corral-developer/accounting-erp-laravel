@@ -1,6 +1,13 @@
 #!/usr/bin/env sh
 set -e
 
+# Octane runs PHP with opcache.file_cache enabled (see .docker/php.ini). PHP
+# aborts on startup with "opcache.file_cache must be a full path of an
+# accessible directory" if the configured directory does not exist, so create
+# it before any PHP process runs.
+mkdir -p /tmp/opcache-file-cache
+chown -R "${USER:-octane}" /tmp/opcache-file-cache 2>/dev/null || true
+
 container_mode=${CONTAINER_MODE:-"http"}
 running_migrations_and_seeders=${RUNNING_MIGRATIONS_AND_SEEDERS:-"false"}
 
@@ -9,7 +16,11 @@ initialStuff() {
 
     if [ "${running_migrations_and_seeders}" = "true" ]; then
         echo "Running migrations and seeding database ..."
-        php artisan migrate --isolated --seed --force || php artisan migrate --seed --force
+        # Single, isolated attempt. Never fall back to a second bare `migrate`:
+        # if the first run fails half-way, re-running it over a partially
+        # migrated database only produces misleading "table already exists"
+        # errors. Fail loudly instead so the platform can retry cleanly.
+        php artisan migrate --isolated --seed --force
     fi
 
     php artisan storage:link
