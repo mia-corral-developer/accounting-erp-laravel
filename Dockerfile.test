@@ -1,0 +1,97 @@
+# syntax=docker/dockerfile:1
+#
+# Dedicated TEST image. Never shipped to production: the prod image excludes
+# tests/ and phpunit.xml via .dockerignore and installs Composer deps with
+# --no-dev. This image deliberately reverses both so the full Pest/PHPUnit
+# suite runs reproducibly and in isolation.
+#
+# .dockerignore keeps tests/ and phpunit.xml OUT of the build context, so this
+# image cannot COPY them. They are bind-mounted at run time instead (see
+# docker-compose.test.yml), which also guarantees the suite matches the exact
+# working-tree checkout (same commit -> same suite -> same result).
+
+###########################################
+# Frontend assets stage (mirrors the prod Dockerfile)
+###########################################
+# View-rendering tests call @vite(), which requires public/build/manifest.json.
+# Without it every test that renders a Blade view warns "Vite manifest not
+# found". Build the assets here and copy them into the test image.
+FROM node:22-alpine AS frontend
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+###########################################
+# Test stage (PHP CLI)
+###########################################
+FROM php:8.5-cli-alpine
+
+WORKDIR /var/www/html
+
+ARG TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
+
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+# Extensions the suite needs. pdo_sqlite/sqlite3 are REQUIRED by phpunit.xml
+# (DB_CONNECTION=sqlite, DB_DATABASE=:memory:) and are NOT installed in the
+# prod image, which only has pdo_mysql/pdo_pgsql. sockets is required by the
+# RoadRunner packages that remain in composer.lock (spiral/goridge,
+# spiral/roadrunner-worker/-http) even though we no longer run Octane.
+RUN install-php-extensions \
+    bcmath \
+    intl \
+    gd \
+    zip \
+    pcntl \
+    mbstring \
+    exif \
+    sockets \
+    bz2 \
+    pgsql \
+    pdo_pgsql \
+    igbinary \
+    pdo_sqlite \
+    sqlite3 \
+    pdo_mysql \
+    redis \
+    && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Path-repository modules must exist before composer install resolves them.
+COPY composer.json composer.lock ./
+COPY modules ./modules
+
+# Application code (tests/ + phpunit.xml excluded by .dockerignore -> mounted).
+COPY . .
+
+# Compiled Vite assets: view-rendering tests need public/build/manifest.json.
+COPY --from=frontend /app/public/build ./public/build
+
+# A .env MUST exist: several tests read it via file_get_contents(base_path('.env'))
+# and without it PHPUnit flags each such test as a warning (E_WARNING) — 1195 of
+# them in this suite. The prod image does the same (COPY .env.example ./.env).
+# Isolation is preserved: the ENV block below is a real environment variable and
+# Dotenv (immutable) never overrides it, so DB_CONNECTION/APP_ENV stay sqlite/testing.
+# .env.example is the only dotenv file .dockerignore lets through (via !.env.example).
+RUN cp .env.example .env
+
+# Dev dependencies ON (pest, paratest, phpstan, ...).
+RUN composer install \
+    --no-interaction \
+    --prefer-dist \
+    --no-scripts \
+    && composer dump-autoload --no-interaction
+
+# Isolation is enforced here, NOT inherited from the host/env. The container
+# never sees DB_HOST/DB_DATABASE/APP_ENV from the runtime stack.
+ENV APP_ENV=testing \
+    DB_CONNECTION=sqlite \
+    DB_DATABASE=:memory:
+
+# memory_limit: booting the 466 modules blows past the 256M default.
+CMD ["php", "-d", "memory_limit=-1", "vendor/bin/pest", "--no-coverage"]

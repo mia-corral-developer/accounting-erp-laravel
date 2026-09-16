@@ -89,7 +89,7 @@ Instala (673 paquetes), migra (438 tablas), siembra y sirve panel Filament. Prob
 | # | Fase | Estado |
 |---|---|---|
 | **0** | Recuperar baseline y bisectabilidad (revert `0307b4b2`) | ✅ **HECHA** — commit `d981ed88` |
-| **1** | Arreglar Pest + Docker target `test` | ⏳ **SIGUIENTE** |
+| **1** | Arreglar Pest + Docker target `test` | 🔄 **casi**: Pest ✅ (faltaba `phpunit.xml`); target `test` construido ✅; baseline real = **1252 tests** (MySQL 30 fallos / sqlite 42); el fork **no es compatible con sqlite** → target correcto = MySQL efímero |
 | 2 | Runtime tenancy (`scoped` + resolvers) | pendiente |
 | 3 | Modelo de referencia `Account` (OBSERVE→ENFORCE) | pendiente |
 | 4 | Clasificar los 171 modelos (app + módulos) | pendiente |
@@ -110,7 +110,9 @@ New failures = 0   ✅ BASELINE PARITY
 ```
 Estado equivalente a `ef5aa3b1`.
 
-> ⚠️ **Ojo (corrección C1):** estos 235 tests son **solo el subconjunto clase-PHPUnit** (Pest está roto). El ~450 completo saldrá cuando se arregle Pest en Fase 1. La **parity gate autoritativa se re-graba al final de la Fase 1**.
+> ⚠️ **Ojo (corrección C1) — RESUELTO:** esos 235 tests eran **solo el subconjunto clase-PHPUnit** (Pest estaba roto por falta de `phpunit.xml`). Al arreglarlo, la **suite completa real** es **1252 tests: 1222 passed / 30 failed (4021 assertions, ~10.6 min)**. Ver `docs/fase1-test-baseline.md`. **El parity gate se mide contra esos 30**, no contra 2.
+
+> 🔴 **Defecto de infraestructura #1:** la suite **NO corre aislada** — `phpunit.xml` declara `sqlite :memory:` pero sus `<env>` no llevan `force="true"`, así que los tests corren con `APP_ENV=local` contra la **MySQL real `liberu`** (`RefreshDatabase` hace `migrate:fresh` ahí). ~17 de los 30 fallos son artefactos de entorno; ninguno viene del trabajo de tenancy (revertido en `d981ed88`). **Fix pendiente:** forzar aislamiento en el target `test`.
 
 ### ⏸️ FASE 1 Colombia (moneda, PUC, impuestos) — NO ARRANZADA
 Arranca **después** de cerrar la Fase 0.6 (tenancy), porque toda la capa Colombia es tenant-owned. Tareas T1.1 (COP), T1.2 (locale es-CO), T1.3+ (PUC, IVA/retención/ICA) están detalladas en `plan-ejecucion-saas-contabilidad-co.md` desde la línea 103.
