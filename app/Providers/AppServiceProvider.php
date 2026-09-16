@@ -7,7 +7,9 @@ namespace App\Providers;
 use App\Models\User;
 use App\Modules\ModuleManager;
 use App\Modules\ModuleServiceProvider;
+use App\Support\Schema\ShortNameBlueprint;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +29,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Register the module service provider
         $this->app->register(ModuleServiceProvider::class);
+
+        // Keep auto-generated index/key names within MySQL's 64-character
+        // identifier limit; without this, migrations over long column lists
+        // abort `php artisan migrate` (SQLSTATE 42000 / 1059).
+        $this->app->bind(Blueprint::class, ShortNameBlueprint::class);
     }
 
     public function boot(): void
