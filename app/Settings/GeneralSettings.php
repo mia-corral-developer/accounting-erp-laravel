@@ -34,6 +34,10 @@ class GeneralSettings extends Settings
 
     public static function group(): string
     {
-        return 'general';
+        // Shares the 'site' group seeded by the settings migration and used by
+        // Liberu\Foundation\Settings\Settings\SiteSettings + ThemeManager.
+        // Declaring a separate 'general' group left this class unseeded → the
+        // Filament widgets that read it threw MissingSettings.
+        return 'site';
     }
 }
