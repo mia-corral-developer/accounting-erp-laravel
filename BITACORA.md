@@ -15,7 +15,7 @@
 | **Repo (fork)** | `github.com/mia-corral-developer/accounting-erp-laravel` |
 | **Upstream** | `liberusoftware/accounting-erp-laravel` — MIT © Liberu |
 | **Rama de trabajo** | `fix/gate-boot-selfhost` |
-| **HEAD actual** | `68a300c7` (esta bitácora). Estado de **código** de tenancy: `d981ed88` — *revert(tenancy): roll back the 56-model guardrail rollout* |
+| **Último commit de CÓDIGO** | `d981ed88` — *revert(tenancy): roll back the 56-model guardrail rollout (0307b4b2)*. Los commits HEAD posteriores son **únicamente esta bitácora** (docs). |
 | **Clone de inspección local** | `/tmp/liberu-inspect` (⚠️ en `/tmp` — puede perderse; el repo real vive en GitHub) |
 | **Entorno de gate en VPS** | `/tmp/liberu-fork` (fuera de `/etc/dokploy`) |
 | **Cliente** | Dueño de la agencia whitelabel (usuario). Proyecto propio, no de terceros. |
