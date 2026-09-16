@@ -52,9 +52,9 @@ COPY . .
 RUN npm run build
 
 ###########################################
-# Main application stage
+# Main application stage (PHP-FPM)
 ###########################################
-FROM php:${PHP_VERSION}-cli-alpine
+FROM php:${PHP_VERSION}-fpm-alpine AS app
 
 LABEL maintainer="SMortexa <seyed.me720@gmail.com>"
 LABEL org.opencontainers.image.title="Laravel Octane Dockerfile"
@@ -96,7 +96,8 @@ RUN apk update && \
     procps \
     ca-certificates \
     supervisor \
-    libsodium-dev && \
+    libsodium-dev \
+    su-exec && \
     install-php-extensions \
     bz2 \
     pcntl \
@@ -140,7 +141,9 @@ RUN mkdir -p /var/log/supervisor /var/run/supervisor \
 
 RUN cp ${PHP_INI_DIR}/php.ini-production ${PHP_INI_DIR}/php.ini
 
-USER ${USER}
+# NOTE: the image intentionally stays root. php-fpm's master process must start
+# as root so it can setuid its workers to the unprivileged "${USER}". (The old
+# Octane image dropped privileges here, but FPM cannot drop and then fork.)
 
 # Install Composer from official image
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -172,20 +175,12 @@ RUN mkdir -p \
     chmod -R a+rw storage
 
 # Copy configuration files
-# The program fragments in /etc/supervisor/conf.d/ are launched directly as the
-# supervisord main config by start-container, and each one pulls the shared
-# [supervisord]/[supervisorctl] section through `[include] files =
-# /etc/supervisord.conf`. Place the shared config exactly where they expect it,
-# or supervisord aborts with "does not include supervisord section".
-COPY --chown=${USER}:${USER} .docker/supervisord.conf /etc/supervisor/
-COPY --chown=${USER}:${USER} .docker/supervisord.conf /etc/supervisord.conf
-COPY --chown=${USER}:${USER} .docker/octane/RoadRunner/supervisord.roadrunner.conf /etc/supervisor/conf.d/
-COPY --chown=${USER}:${USER} .docker/supervisord.horizon.conf /etc/supervisor/conf.d/
-COPY --chown=${USER}:${USER} .docker/supervisord.reverb.conf /etc/supervisor/conf.d/
-COPY --chown=${USER}:${USER} .docker/supervisord.scheduler.conf /etc/supervisor/conf.d/
-COPY --chown=${USER}:${USER} .docker/supervisord.worker.conf /etc/supervisor/conf.d/
-COPY --chown=${USER}:${USER} .docker/php.ini ${PHP_INI_DIR}/conf.d/99-octane.ini
-COPY --chown=${USER}:${USER} .docker/start-container /usr/local/bin/start-container
+# PHP-FPM runtime: remove the stock "zz-docker.conf" (it defines its own [www]
+# pool that collides with ours) and install our pool + php.ini overrides.
+RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf
+COPY .docker/fpm/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY .docker/php.ini ${PHP_INI_DIR}/conf.d/99-app.ini
+COPY .docker/start-container /usr/local/bin/start-container
 
 # Copy environment file
 COPY --chown=${USER}:${USER} .env.example ./.env
@@ -193,9 +188,20 @@ COPY --chown=${USER}:${USER} .env.example ./.env
 RUN chmod +x /usr/local/bin/start-container && \
     cat .docker/utilities.sh >> ~/.bashrc
 
-EXPOSE 8000
-EXPOSE 8080
+EXPOSE 9000
 
 ENTRYPOINT ["start-container"]
 
-HEALTHCHECK --start-period=5s --interval=2s --timeout=5s --retries=8 CMD php artisan octane:status || exit 1
+HEALTHCHECK --start-period=10s --interval=5s --timeout=5s --retries=6 CMD php -r '$c=@fsockopen("127.0.0.1",9000); exit($c?0:1);'
+
+###########################################
+# Web server stage (nginx)
+###########################################
+# Serves public/ as static files and proxies PHP to the "app" (php-fpm) service.
+# Separate container = one process each, no supervisord orchestration.
+FROM nginx:alpine AS web
+
+COPY --from=app /var/www/html/public /var/www/html/public
+COPY .docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80

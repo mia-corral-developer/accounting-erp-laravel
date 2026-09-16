@@ -1,15 +1,14 @@
 #!/usr/bin/env sh
 set -e
 
-# Octane runs PHP with opcache.file_cache enabled (see .docker/php.ini). PHP
-# aborts on startup with "opcache.file_cache must be a full path of an
-# accessible directory" if the configured directory does not exist, so create
-# it before any PHP process runs.
-mkdir -p /tmp/opcache-file-cache
-chown -R "${USER:-octane}" /tmp/opcache-file-cache 2>/dev/null || true
-
+# Runs migrations/optimization once, then starts the requested process.
+# The web container execs php-fpm (no supervisord, no Octane/RoadRunner).
 container_mode=${CONTAINER_MODE:-"http"}
 running_migrations_and_seeders=${RUNNING_MIGRATIONS_AND_SEEDERS:-"false"}
+
+run_as() {
+    su-exec "${USER:-octane}" "$@"
+}
 
 initialStuff() {
     echo "Container mode: $container_mode"
@@ -20,44 +19,36 @@ initialStuff() {
         # if the first run fails half-way, re-running it over a partially
         # migrated database only produces misleading "table already exists"
         # errors. Fail loudly instead so the platform can retry cleanly.
-        php artisan migrate --isolated --seed --force
+        run_as php artisan migrate --isolated --seed --force
     fi
 
-    php artisan storage:link
-    php artisan optimize
+    run_as php artisan storage:link || true
+    run_as php artisan optimize
 }
 
 if [ "$1" != "" ]; then
     exec "$@"
 elif [ "${container_mode}" = "http" ]; then
     initialStuff
-    echo "Octane Server: $OCTANE_SERVER"
-    if [ "${OCTANE_SERVER}" = "frankenphp" ]; then
-        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.frankenphp.conf
-    elif [ "${OCTANE_SERVER}" = "swoole" ]; then
-        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.swoole.conf
-    elif [ "${OCTANE_SERVER}" = "roadrunner" ]; then
-        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.roadrunner.conf
-    else
-        echo "Invalid Octane server supplied."
-        exit 1
-    fi
-elif [ "${container_mode}" = "horizon" ]; then
-    initialStuff
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.horizon.conf
-elif [ "${container_mode}" = "reverb" ]; then
-    initialStuff
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.reverb.conf
-elif [ "${container_mode}" = "scheduler" ]; then
-    initialStuff
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.scheduler.conf
+    echo "Starting PHP-FPM ..."
+    # Master stays root (to setuid the pool user); workers run as 'octane'.
+    exec php-fpm -F
 elif [ "${container_mode}" = "worker" ]; then
     if [ -z "${WORKER_COMMAND}" ]; then
         echo "WORKER_COMMAND is undefined."
         exit 1
     fi
     initialStuff
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.worker.conf
+    exec run_as sh -c "${WORKER_COMMAND}"
+elif [ "${container_mode}" = "scheduler" ]; then
+    initialStuff
+    exec run_as supercronic -overlapping /etc/supercronic/laravel
+elif [ "${container_mode}" = "horizon" ]; then
+    initialStuff
+    exec run_as php artisan horizon
+elif [ "${container_mode}" = "reverb" ]; then
+    initialStuff
+    exec run_as php artisan reverb:start
 else
     echo "Container mode mismatched."
     exit 1
