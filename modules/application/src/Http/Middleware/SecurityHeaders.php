@@ -24,7 +24,7 @@ class SecurityHeaders
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'strict-origin-when-cross-origin',
             'X-Permitted-Cross-Domain-Policies' => 'none',
-            'Permissions-Policy' => 'geolocation=(), camera=(), microphone=(), interest-cohort=()',
+            'Permissions-Policy' => 'geolocation=(), camera=(), microphone=()',
         ];
 
         // HSTS only over HTTPS, so local http development is unaffected.
