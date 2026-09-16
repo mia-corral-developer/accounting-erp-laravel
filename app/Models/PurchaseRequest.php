@@ -6,7 +6,7 @@ namespace App\Models;
 
 use App\Concerns\Approvable;
 use App\Contracts\ApprovableRecord;
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +17,7 @@ class PurchaseRequest extends Model implements ApprovableRecord
 {
     use Approvable;
     use HasFactory;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
 
     #[\Override]
     protected $fillable = [

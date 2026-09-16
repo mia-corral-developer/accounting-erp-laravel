@@ -9,7 +9,7 @@ use App\Concerns\HasDocuments;
 use App\Concerns\Recurring;
 use App\Contracts\ApprovableRecord;
 use App\Contracts\Documentable;
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +31,7 @@ class Bill extends Model implements ApprovableRecord, Documentable
     use Approvable;
     use HasDocuments;
     use HasFactory, SoftDeletes;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
     use Recurring;
 
     #[\Override]

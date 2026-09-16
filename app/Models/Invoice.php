@@ -9,7 +9,7 @@ use App\Concerns\HasDocuments;
 use App\Concerns\Recurring;
 use App\Contracts\ApprovableRecord;
 use App\Contracts\Documentable;
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -32,7 +32,7 @@ class Invoice extends Model implements ApprovableRecord, Documentable
     use Approvable;
     use HasDocuments;
     use HasFactory;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
     use Recurring;
 
     // protected $primaryKey = "invoice_id";

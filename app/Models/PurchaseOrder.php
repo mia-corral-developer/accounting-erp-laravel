@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseOrder extends Model
 {
     use HasFactory;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
 
     #[\Override]
     protected $primaryKey = 'purchase_order_id';

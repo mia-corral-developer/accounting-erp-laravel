@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TaxRate extends Model
 {
     use HasFactory;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
 
     #[\Override]
     protected $primaryKey = 'tax_rate_id';

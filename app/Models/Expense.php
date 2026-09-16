@@ -8,7 +8,7 @@ use App\Concerns\Approvable;
 use App\Concerns\Recurring;
 use App\Contracts\ApprovableRecord;
 use App\Notifications\ExpenseApprovalNotification;
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Expense extends Model implements ApprovableRecord
 {
     use Approvable;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
     use Recurring;
 
     #[\Override]

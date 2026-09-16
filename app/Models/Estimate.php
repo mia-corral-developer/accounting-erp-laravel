@@ -6,7 +6,7 @@ namespace App\Models;
 
 use App\Concerns\HasDocuments;
 use App\Contracts\Documentable;
-use App\Traits\IsTenantModel;
+use App\Models\Concerns\BelongsToCurrentTeam;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,7 +28,7 @@ class Estimate extends Model implements Documentable
 {
     use HasDocuments;
     use HasFactory, SoftDeletes;
-    use IsTenantModel;
+    use BelongsToCurrentTeam;
 
     #[\Override]
     protected $primaryKey = 'estimate_id';
