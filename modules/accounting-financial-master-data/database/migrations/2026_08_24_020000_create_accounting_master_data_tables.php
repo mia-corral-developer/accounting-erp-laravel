@@ -95,7 +95,10 @@ return new class() extends Migration
             $table->string('status', 16)->default('active');
             $table->json('metadata')->nullable();
             $table->timestamps();
-            $table->unique(['party_id', 'credential_reference']);
+            // Explicit short name: the auto-generated
+            // accounting_master_bank_detail_references_party_id_credential_reference_unique
+            // exceeds MySQL's 64-character identifier limit (error 1059).
+            $table->unique(['party_id', 'credential_reference'], 'acct_master_bank_ref_party_cred_uniq');
         });
     }
 
