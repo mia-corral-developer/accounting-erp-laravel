@@ -34,6 +34,24 @@ RUN composer install \
     --ignore-platform-req=ext-pcntl
 
 ###########################################
+# Frontend assets stage
+###########################################
+# The application layouts call @vite(...), which requires public/build/manifest.json.
+# Without a build step the manifest is missing and every web route returns 500
+# ("Vite manifest not found"). Compile the assets here and copy them into the
+# runtime image.
+FROM node:22-alpine AS frontend
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npm run build
+
+###########################################
 # Main application stage
 ###########################################
 FROM php:${PHP_VERSION}-cli-alpine
@@ -135,6 +153,9 @@ COPY --chown=${USER}:${USER} composer.json composer.lock ./
 
 # Copy application code first so autoloader can resolve all files
 COPY --chown=${USER}:${USER} . .
+
+# Bring in the compiled frontend assets (public/build/manifest.json + bundles)
+COPY --chown=${USER}:${USER} --from=frontend /app/public/build ./public/build
 
 # Generate optimized autoloader now that all app files are present
 RUN composer dump-autoload --classmap-authoritative --no-dev && \
