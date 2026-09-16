@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Traefik (TLS terminated at the edge): trust the proxy headers
+        // so X-Forwarded-Proto=https is honoured. Without this the app builds
+        // http:// asset/route URLs and the browser blocks Livewire JS as
+        // mixed content, so every form (including login) silently fails.
+        $middleware->trustProxies(at: '*');
         $middleware->appendToGroup('web', [SetLocale::class, SecurityHeaders::class]);
         $middleware->prependToGroup('api', [SecurityHeaders::class]);
         $middleware->alias([
