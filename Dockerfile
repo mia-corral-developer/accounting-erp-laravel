@@ -151,7 +151,13 @@ RUN mkdir -p \
     chmod -R a+rw storage
 
 # Copy configuration files
+# The program fragments in /etc/supervisor/conf.d/ are launched directly as the
+# supervisord main config by start-container, and each one pulls the shared
+# [supervisord]/[supervisorctl] section through `[include] files =
+# /etc/supervisord.conf`. Place the shared config exactly where they expect it,
+# or supervisord aborts with "does not include supervisord section".
 COPY --chown=${USER}:${USER} .docker/supervisord.conf /etc/supervisor/
+COPY --chown=${USER}:${USER} .docker/supervisord.conf /etc/supervisord.conf
 COPY --chown=${USER}:${USER} .docker/octane/RoadRunner/supervisord.roadrunner.conf /etc/supervisor/conf.d/
 COPY --chown=${USER}:${USER} .docker/supervisord.horizon.conf /etc/supervisor/conf.d/
 COPY --chown=${USER}:${USER} .docker/supervisord.reverb.conf /etc/supervisor/conf.d/
