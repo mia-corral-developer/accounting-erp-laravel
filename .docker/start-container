@@ -24,6 +24,9 @@ initialStuff() {
 
     run_as php artisan storage:link || true
     run_as php artisan optimize
+    # Compile the module registry at boot so request-time resolution reads one
+    # cache file instead of re-scanning every module's composer.json.
+    run_as php artisan module:cache || true
 }
 
 if [ "$1" != "" ]; then
