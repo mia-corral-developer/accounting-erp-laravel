@@ -31,9 +31,9 @@ class AppServiceProvider extends ServiceProvider
         // Register the module service provider
         $this->app->register(ModuleServiceProvider::class);
 
-        // Tenant guardrail: singleton so an explicitly set team persists for the
-        // request (and explicit contexts in tests/console/jobs).
-        $this->app->singleton(TeamContext::class);
+        // ADR-001 §3.3: scoped, not singleton — the context must never persist
+        // across request/job lifecycles.
+        $this->app->scoped(TeamContext::class);
 
         // Keep auto-generated index/key names within MySQL's 64-character
         // identifier limit; without this, migrations over long column lists
