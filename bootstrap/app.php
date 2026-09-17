@@ -3,6 +3,8 @@
 use App\Http\Middleware\EnsurePremiumAccess;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
+use App\Support\Tenancy\Exceptions\MissingTenantContextException;
+use App\Support\Tenancy\Exceptions\TenantResolutionConflictException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -39,4 +41,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // ADR-001 §5: a cross-tenant request is a forbidden (4xx) outcome, never
+        // a 500. Refusing to choose between conflicting tenant signals, and
+        // touching tenant-owned data without a resolved context, are both
+        // authorisation failures from the caller's point of view.
+        $exceptions->render(function (TenantResolutionConflictException|MissingTenantContextException $e, Request $request) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 403)
+                : response($e->getMessage(), 403);
+        });
     })->create();

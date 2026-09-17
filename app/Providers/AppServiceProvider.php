@@ -9,6 +9,7 @@ use App\Modules\ModuleManager;
 use App\Modules\ModuleServiceProvider;
 use App\Support\Schema\ShortNameBlueprint;
 use App\Support\Tenancy\TeamContext;
+use App\Support\Tenancy\TenancyEnforcement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Gate;
@@ -34,6 +35,10 @@ class AppServiceProvider extends ServiceProvider
         // ADR-001 §3.3: scoped, not singleton — the context must never persist
         // across request/job lifecycles.
         $this->app->scoped(TeamContext::class);
+
+        // The enforcement mode is read from config once per container lifetime
+        // and injected where the decision is made (TeamScope).
+        $this->app->singleton(TenancyEnforcement::class);
 
         // Keep auto-generated index/key names within MySQL's 64-character
         // identifier limit; without this, migrations over long column lists
