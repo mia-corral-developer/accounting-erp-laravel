@@ -125,6 +125,7 @@ services:
 
   mysql:
     image: mysql:8.0
+    command: --innodb-buffer-pool-size=3G --innodb-buffer-pool-instances=3 --innodb-flush-method=O_DIRECT --innodb-io-capacity=2000 --max-connections=300
     ports:
       - '${FORWARD_DB_PORT:-3306}:3306'
     environment:
