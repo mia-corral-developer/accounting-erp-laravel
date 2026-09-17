@@ -10,6 +10,7 @@ use App\Modules\ModuleServiceProvider;
 use App\Support\Schema\ShortNameBlueprint;
 use App\Support\Tenancy\TeamContext;
 use App\Support\Tenancy\TenancyEnforcement;
+use App\Support\Tenancy\TenantQueryTelemetry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Gate;
@@ -40,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
         // and injected where the decision is made (TeamScope).
         $this->app->singleton(TenancyEnforcement::class);
 
+        // Schema-derived tenancy map, shared by the canary and the query-level
+        // telemetry (OBSERVE mode).
+        $this->app->singleton(TenantModelRegistry::class, fn ($app) => new TenantModelRegistry($app->basePath()));
+
         // Keep auto-generated index/key names within MySQL's 64-character
         // identifier limit; without this, migrations over long column lists
         // abort `php artisan migrate` (SQLSTATE 42000 / 1059).
@@ -57,6 +62,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureModels();
         $this->configureUrl();
         $this->configurePassword();
+
+        // OBSERVE mode: record every query that touches a tenant-owned table
+        // while no tenant context is resolved. No-op in LEGACY / ENFORCE.
+        app(TenantQueryTelemetry::class)->register();
     }
 
     private function configureModels(): void

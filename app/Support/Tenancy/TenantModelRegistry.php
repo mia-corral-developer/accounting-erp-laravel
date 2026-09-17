@@ -27,7 +27,17 @@ use Symfony\Component\Finder\Finder;
  */
 final class TenantModelRegistry
 {
-    public function __construct(private readonly string $basePath) {}
+    private string $basePath;
+
+    /**
+     * `$basePath` is optional so the class is self-resolvable by the container
+     * (a required primitive makes it unresolvable, which breaks any boot-time
+     * resolution — e.g. `package:discover` during `composer dump-autoload`).
+     */
+    public function __construct(?string $basePath = null)
+    {
+        $this->basePath = $basePath ?? base_path();
+    }
 
     /**
      * Every concrete Eloquent model class declared under `app/Models` and any
