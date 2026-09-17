@@ -11,6 +11,9 @@ final class ModuleRegistry
     /** @param array<string, Manifest> $modules */
     public function __construct(private array $modules) {}
 
+    /** @var array{0: array<string, string>, 1: array<string, string>}|null */
+    private ?array $ownerMaps = null;
+
     public function has(string $name): bool
     {
         return isset($this->modules[$name]);
@@ -81,21 +84,7 @@ final class ModuleRegistry
             }
         }
 
-        $packageOwners = [];
-        $capabilityOwners = [];
-        foreach ($this->modules as $name => $manifest) {
-            $composerPath = $manifest->path.'/composer.json';
-            if (! is_file($composerPath)) {
-                continue;
-            }
-            $composer = json_decode((string) file_get_contents($composerPath), true);
-            if (isset($composer['name'])) {
-                $packageOwners[$composer['name']] = $name;
-            }
-            foreach ($manifest->capabilities() as $capability) {
-                $capabilityOwners[$capability] = $name;
-            }
-        }
+        [$packageOwners, $capabilityOwners] = $this->ownerMaps();
 
         foreach ($selected as $name => $manifest) {
             foreach ($manifest->requiredPackages() as $package => $constraint) {
@@ -157,5 +146,39 @@ final class ModuleRegistry
         }
 
         return array_values($ordered);
+    }
+
+    /**
+     * Composer package and capability owners are a pure function of the
+     * discovered manifests. A registry is resolved more than once per request
+     * (panel plugins, theme capabilities, validation), so computing the lookup
+     * maps on every resolve() call re-reads every module's composer.json from
+     * disk — thousands of expensive stat/open syscalls behind an overlayfs.
+     * Memoize them for the registry lifetime.
+     *
+     * @return array{0: array<string, string>, 1: array<string, string>}
+     */
+    private function ownerMaps(): array
+    {
+        if ($this->ownerMaps !== null) {
+            return $this->ownerMaps;
+        }
+
+        $packageOwners = [];
+        $capabilityOwners = [];
+        foreach ($this->modules as $name => $manifest) {
+            $composerPath = $manifest->path.'/composer.json';
+            if (is_file($composerPath)) {
+                $composer = json_decode((string) file_get_contents($composerPath), true);
+                if (isset($composer['name'])) {
+                    $packageOwners[$composer['name']] = $name;
+                }
+            }
+            foreach ($manifest->capabilities() as $capability) {
+                $capabilityOwners[$capability] = $name;
+            }
+        }
+
+        return $this->ownerMaps = [$packageOwners, $capabilityOwners];
     }
 }
