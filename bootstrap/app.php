@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Middleware\EnsurePremiumAccess;
+use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Liberu\Foundation\Localization\Http\Middleware\SetLocale;
 
@@ -23,8 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // http:// asset/route URLs and the browser blocks Livewire JS as
         // mixed content, so every form (including login) silently fails.
         $middleware->trustProxies(at: '*');
-        $middleware->appendToGroup('web', [SetLocale::class, SecurityHeaders::class]);
+        $middleware->appendToGroup('web', [SetLocale::class, SecurityHeaders::class, ResolveTenantContext::class]);
         $middleware->prependToGroup('api', [SecurityHeaders::class]);
+        // ADR-001 §5: the tenant must be resolved before route-model binding, so
+        // bound models resolve under the correct tenant (not the caller's default).
+        $middleware->prependToPriorityList(SubstituteBindings::class, ResolveTenantContext::class);
         $middleware->alias([
             'ability' => CheckAbilities::class,
             'premium' => EnsurePremiumAccess::class,
