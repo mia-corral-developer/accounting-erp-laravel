@@ -43,10 +43,19 @@ final class TenantQueryTelemetry
         private readonly TenantModelRegistry $registry,
     ) {}
 
-    /** Attach the observer to the DB connection, if (and only if) OBSERVE is on. */
-    public function register(): void
+    /**
+     * Attach the observer to the DB connection, if (and only if) OBSERVE is on.
+     *
+     * @param  bool  $force  attach regardless of mode/process — used only by the
+     *                       regression test, which must exercise the listener.
+     */
+    public function register(bool $force = false): void
     {
-        if (! $this->enforcement->isObserving()) {
+        if (! $force && ! $this->enforcement->isObserving()) {
+            return;
+        }
+
+        if (! $force && ! $this->shouldMeasure()) {
             return;
         }
 
@@ -55,40 +64,60 @@ final class TenantQueryTelemetry
         });
     }
 
+    /**
+     * Measure the surfaces that actually serve tenants: HTTP requests and long-
+     * lived queue workers. Boot/console commands (migrate, seed, optimize,
+     * package:discover, tinker) are excluded — they legitimately run without a
+     * tenant and would only add noise and boot-time schema scans.
+     */
+    private function shouldMeasure(): bool
+    {
+        if (! app()->runningInConsole()) {
+            return true;
+        }
+
+        $command = $_SERVER['argv'][1] ?? '';
+
+        return in_array($command, ['queue:work', 'queue:listen', 'horizon', 'schedule:run', 'schedule:work'], true);
+    }
+
     public function inspect(QueryExecuted $query): void
     {
         if ($this->inspecting) {
             return;
         }
 
-        // Already resolved to a tenant (or central)? Nothing to measure.
-        if (app(TeamContext::class)->id() !== null) {
-            return;
-        }
-
-        $tables = $this->tablesIn($query->sql);
-
-        if ($tables === []) {
-            return;
-        }
-
-        $hits = array_values(array_intersect($tables, array_keys($this->tenantTables())));
-
-        if ($hits === []) {
-            return;
-        }
-
-        // Report each distinct statement once per process — enough signal,
-        // no flooding under load.
-        $key = md5($query->sql);
-        if (isset($this->reported[$key])) {
-            return;
-        }
-        $this->reported[$key] = true;
-
+        // Set the guard BEFORE anything that can itself run a query (the schema
+        // read that builds the tenant-table set). Otherwise those queries re-enter
+        // this listener and recurse without bound.
         $this->inspecting = true;
 
         try {
+            // Already resolved to a tenant (or central)? Nothing to measure.
+            if (app(TeamContext::class)->id() !== null) {
+                return;
+            }
+
+            $tables = $this->tablesIn($query->sql);
+
+            if ($tables === []) {
+                return;
+            }
+
+            $hits = array_values(array_intersect($tables, array_keys($this->tenantTables())));
+
+            if ($hits === []) {
+                return;
+            }
+
+            // Report each distinct statement once per process — enough signal,
+            // no flooding under load.
+            $key = md5($query->sql);
+            if (isset($this->reported[$key])) {
+                return;
+            }
+            $this->reported[$key] = true;
+
             Log::warning('Tenant-owned query executed without resolved context', [
                 'tables' => $hits,
                 'connection' => $query->connectionName,
